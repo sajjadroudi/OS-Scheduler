@@ -17,7 +17,7 @@ public class RoundRobinAlgorithm implements SchedulingAlgorithm {
     }
 
     @Override
-    public int compare(Task o1, Task o2) {
+    public int compareTwoItems(Task o1, Task o2) {
         Integer executedTime1 = map.get(o1);
         Integer executedTime2 = map.get(o1);
 
