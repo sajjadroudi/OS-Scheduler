@@ -51,10 +51,12 @@ public class Cpu {
                 }
 
                 private Task getNextReadyTask() {
-                    Task poorTask = scheduler.getQualifiedTasksToPreventStarvation();
+                    Task[] poorTasks = scheduler.getQualifiedTasksToPreventStarvation();
 
-                    if(poorTask != null) {
-                        return poorTask;
+                    for(Task task : poorTasks) {
+                        if(resourceManager.areAllNeededResourcesAvailable(task)) {
+                            return task;
+                        }
                     }
 
                     Task nextTask = scheduler.nextReadyTask();

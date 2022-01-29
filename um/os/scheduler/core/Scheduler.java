@@ -46,20 +46,20 @@ public class Scheduler {
         }
     }
 
-    public Task getQualifiedTasksToPreventStarvation() {
+    public Task[] getQualifiedTasksToPreventStarvation() {
         synchronized (waitingQueueLock) {
             return waiting.stream()
                     .filter(it -> it.getWaitingTime() >= 2 * it.getDuration())
-                    .max(new Comparator<Task>() {
+                    .sorted(new Comparator<Task>() {
                         @Override
                         public int compare(Task o1, Task o2) {
                             return Integer.compare(
-                                    o1.getWaitingTime() - 2 * o1.getDuration(),
-                                    o2.getWaitingTime() - 2 * o2.getDuration()
+                                    o2.getWaitingTime() - 2 * o2.getDuration(),
+                                    o1.getWaitingTime() - 2 * o1.getDuration()
                             );
                         }
                     })
-                    .orElse(null);
+                    .toArray(Task[]::new);
         }
     }
 
