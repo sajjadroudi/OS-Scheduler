@@ -1,5 +1,6 @@
 package um.os.scheduler.core;
 
+import um.os.scheduler.algo.PreemptiveSchedulingAlgorithm;
 import um.os.scheduler.algo.SchedulingAlgorithm;
 import um.os.scheduler.resource.ResourceManager;
 import um.os.scheduler.task.Task;
@@ -15,9 +16,21 @@ public class Scheduler {
     private final Object readyQueueLock = new Object();
     private final Object waitingQueueLock = new Object();
 
+    private final SchedulingAlgorithm schedulingAlgorithm;
+
     public Scheduler(SchedulingAlgorithm algorithm) {
+        schedulingAlgorithm = algorithm;
         ready = new PriorityQueue<>(algorithm);
         waiting = new LinkedList<>();
+    }
+
+    public boolean onExecuteOneTimeUnit(Task task) {
+        boolean kickOutOfRunning = false;
+        if(schedulingAlgorithm instanceof PreemptiveSchedulingAlgorithm) {
+            PreemptiveSchedulingAlgorithm algorithm = (PreemptiveSchedulingAlgorithm) schedulingAlgorithm;
+            kickOutOfRunning = algorithm.onExecuteOneTimeUnit(task);
+        }
+        return kickOutOfRunning;
     }
 
     public Task nextReadyTask() {
@@ -59,8 +72,7 @@ public class Scheduler {
         synchronized (readyQueueLock) {
             return ready.stream()
                     .map(Task::getName)
-                    .collect(Collectors.toList())
-                    .toArray(new String[0]);
+                    .toArray(String[]::new);
         }
     }
 
@@ -68,8 +80,7 @@ public class Scheduler {
         synchronized (waitingQueueLock) {
             return waiting.stream()
                     .map(Task::getName)
-                    .collect(Collectors.toList())
-                    .toArray(new String[0]);
+                    .toArray(String[]::new);
         }
     }
 

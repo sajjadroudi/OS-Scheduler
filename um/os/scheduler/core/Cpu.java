@@ -14,6 +14,10 @@ public class Cpu {
     private final Processor[] processors;
     private final ResourceManager resourceManager;
 
+    private final Object resourceManagerLock = new Object();
+    private final Object processorsLock = new Object();
+    private final Object schedulerLock = new Object();
+
     public Cpu(int processorCount, Scheduler scheduler, ResourceManager resourceManager) {
         this.scheduler = scheduler;
         this.resourceManager = resourceManager;
@@ -27,27 +31,23 @@ public class Cpu {
             processors[i] = new Processor(new TaskCallback() {
                 @Override
                 public void onTaskFinished(Task task) {
-                    resourceManager.freeTakenResources(task);
-                    moveQualifiedTasksToReadyQueue();
-                }
-
-                private void moveQualifiedTasksToReadyQueue() {
-                    for(Task task : scheduler.getWaitingTasks()) {
-                        if(resourceManager.areAllNeededResourcesAvailable(task)) {
-                            scheduler.pushToReadyQueue(task);
-                        }
-                    }
+                    freeResources(task);
                 }
 
                 @Override
                 public Task nextTask() {
-                    Task nextTask = getNextReadyTask();
+                    synchronized (resourceManagerLock) {
+                        Task nextTask;
+                        synchronized (schedulerLock) {
+                            nextTask = getNextReadyTask();
+                        }
 
-                    if(nextTask != null) {
-                        resourceManager.takeNeededResources(nextTask);
+                        if(nextTask != null) {
+                            resourceManager.takeNeededResources(nextTask);
+                        }
+
+                        return nextTask;
                     }
-
-                    return nextTask;
                 }
 
                 private Task getNextReadyTask() {
@@ -61,29 +61,88 @@ public class Cpu {
                     return nextTask;
                 }
 
+                @Override
+                public void onExecuteOneTimeUnit(Task task) {
+                    boolean kickOutOfRunning;
+                    synchronized (schedulerLock) {
+                        kickOutOfRunning = scheduler.onExecuteOneTimeUnit(task);
+                    }
+                    if(kickOutOfRunning) {
+                        Processor processor = findProcessor(task);
+                        if(processor != null) {
+                            freeResources(task);
+                            processor.moveToNextTask();
+                        }
+                    }
+                }
+
+                private void freeResources(Task task) {
+                    synchronized (resourceManagerLock) {
+                        resourceManager.freeTakenResources(task);
+                        synchronized (schedulerLock) {
+                            moveQualifiedTasksToReadyQueue();
+                        }
+                    }
+                }
+
+                private void moveQualifiedTasksToReadyQueue() {
+                    for(Task task : scheduler.getWaitingTasks()) {
+                        if(resourceManager.areAllNeededResourcesAvailable(task)) {
+                            scheduler.pushToReadyQueue(task);
+                        }
+                    }
+                }
+
+                private Processor findProcessor(Task task) {
+                    synchronized (processorsLock) {
+                        for(Processor processor : processors) {
+                            if(processor.getCurrentTask() == task) {
+                                return processor;
+                            }
+                        }
+                        return null;
+                    }
+                }
             });
         }
     }
 
     public void assignTask(Task task) {
-        if(resourceManager.areAllNeededResourcesAvailable(task)) {
-            scheduler.pushToReadyQueue(task);
-        } else {
-            scheduler.pushToWaitingQueue(task);
+        boolean areAllNeededResourcesAvailable;
+        synchronized (resourceManagerLock) {
+            areAllNeededResourcesAvailable = resourceManager.areAllNeededResourcesAvailable(task);
+        }
+
+        synchronized (schedulerLock) {
+            if(areAllNeededResourcesAvailable) {
+                scheduler.pushToReadyQueue(task);
+            } else {
+                scheduler.pushToWaitingQueue(task);
+            }
         }
     }
 
     public boolean areAllTasksFinished() {
-        boolean allProcessorsAreIdle = Arrays
+        boolean allProcessorsAreIdle;
+        synchronized (processorsLock) {
+            allProcessorsAreIdle = Arrays
                 .stream(processors)
                 .allMatch(Processor::isIdle);
+        }
 
-        return allProcessorsAreIdle && scheduler.thereIsNoTaskToExecute();
+        boolean thereIsNoTaskToExecute;
+        synchronized (schedulerLock) {
+            thereIsNoTaskToExecute = scheduler.thereIsNoTaskToExecute();
+        }
+
+        return allProcessorsAreIdle && thereIsNoTaskToExecute;
     }
 
     public void run() {
-        for(Processor processor : processors)
-            processor.run();
+        synchronized (processorsLock) {
+            for(Processor processor : processors)
+                processor.run();
+        }
     }
 
     public String getSystemStatus() {
@@ -93,41 +152,49 @@ public class Cpu {
                 .append(TimeUnitObservable.getInstance().getCurrentTime())
                 .append("\n");
 
-        for(ResourceManager.ResourceStatus status : resourceManager.getResourceStatuses()) {
-            builder
-                    .append(status.getResourceType())
-                    .append(": ")
-                    .append(status.getFreeCount())
-                    .append("\t");
+        synchronized (resourceManagerLock) {
+            for(ResourceManager.ResourceStatus status : resourceManager.getResourceStatuses()) {
+                builder
+                        .append(status.getResourceType())
+                        .append(": ")
+                        .append(status.getFreeCount())
+                        .append("\t");
+            }
         }
         builder.append("\n");
 
         builder.append("priority queue:\t");
-        for(String taskName : scheduler.getReadyTaskNames()) {
-            builder.append(taskName)
-                    .append("-");
+        synchronized (schedulerLock) {
+            for(String taskName : scheduler.getReadyTaskNames()) {
+                builder.append(taskName)
+                        .append("-");
+            }
         }
         builder.append("\n");
 
         builder.append("waiting queue:\t");
-        for(String taskName : scheduler.getWaitingTaskNames()) {
-            builder.append(taskName)
-                    .append("-");
+        synchronized(schedulerLock) {
+            for(String taskName : scheduler.getWaitingTaskNames()) {
+                builder.append(taskName)
+                        .append("-");
+            }
         }
         builder.append("\n");
 
-        for (int i = 0; i < processors.length; i++) {
-            builder.append("CPU")
-                    .append(i + 1)
-                    .append(": ");
+        synchronized (processorsLock) {
+            for (int i = 0; i < processors.length; i++) {
+                builder.append("CPU")
+                        .append(i + 1)
+                        .append(": ");
 
-            if(processors[i].isIdle()) {
-                builder.append("Idle");
-            } else {
-                builder.append(processors[i].getCurrentTask().getName());
+                if(processors[i].isIdle()) {
+                    builder.append("Idle");
+                } else {
+                    builder.append(processors[i].getCurrentTask().getName());
+                }
+
+                builder.append("\n");
             }
-
-            builder.append("\n");
         }
 
         return builder.toString();

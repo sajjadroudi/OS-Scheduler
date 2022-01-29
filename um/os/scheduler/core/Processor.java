@@ -19,37 +19,31 @@ public class Processor {
             shouldRunThread = true;
         });
 
-        thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while(true) {
-                    if(shouldRunThread) {
-                        process();
-                        shouldRunThread = false;
-                    }
+        thread = new Thread(() -> {
+            while(true) {
+                if(shouldRunThread) {
+                    process();
+                    shouldRunThread = false;
                 }
             }
         });
     }
 
     private void process() {
-        receiveNewTaskIfNeeded();
-        executeTask();
-    }
-
-    private void receiveNewTaskIfNeeded() {
         if(currentTask == null) {
             currentTask = taskCallback.nextTask();
         } else if(currentTask.isFinished()) {
             taskCallback.onTaskFinished(currentTask);
             currentTask = taskCallback.nextTask();
+        } else {
+            currentTask.decrementDuration();
+            taskCallback.onExecuteOneTimeUnit(currentTask);
         }
     }
 
-    private void executeTask() {
-        if(currentTask != null) {
-            currentTask.decrementDuration();
-        }
+    public void moveToNextTask() {
+        currentTask = null;
+        currentTask = taskCallback.nextTask();
     }
 
     public boolean isIdle() {

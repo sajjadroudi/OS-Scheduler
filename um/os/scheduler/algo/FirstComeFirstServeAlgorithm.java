@@ -2,7 +2,7 @@ package um.os.scheduler.algo;
 
 import um.os.scheduler.task.Task;
 
-public class FirstComeFirstServeAlgorithm implements SchedulingAlgorithm {
+public class FirstComeFirstServeAlgorithm implements NonPreemptiveSchedulingAlgorithm {
 
     @Override
     public int compareTwoItems(Task o1, Task o2) {

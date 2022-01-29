@@ -1,5 +1,7 @@
 package um.os.scheduler.timeunit;
 
+import um.os.scheduler.Utils;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,9 +36,11 @@ public class TimeUnitObservable {
     }
 
     public void notifyOneTimeUnitPassed() {
+        Utils.sleepThread();
         currentTime++;
         for(TimeUnitObserver observer : observers)
             observer.oneTimeUnitPassed();
+        Utils.sleepThread();
     }
 
 }

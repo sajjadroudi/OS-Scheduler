@@ -1,41 +1,50 @@
 package um.os.scheduler.algo;
 
+import um.os.scheduler.core.Scheduler;
 import um.os.scheduler.task.Task;
+import um.os.scheduler.timeunit.TimeUnitObservable;
 
 import java.util.HashMap;
 import java.util.Map;
 
-// TODO
-public class RoundRobinAlgorithm implements SchedulingAlgorithm {
+public class RoundRobinAlgorithm extends FirstComeFirstServeAlgorithm implements PreemptiveSchedulingAlgorithm {
 
     private final Map<Task, Integer> map;
     private final int timeSlice;
+    private Scheduler scheduler;
+
+    private final Object mapLock = new Object();
 
     public RoundRobinAlgorithm(int timeSlice) {
-        map = new HashMap<>();
         this.timeSlice = timeSlice;
+        map = new HashMap<>();
+    }
+
+    public void setScheduler(Scheduler scheduler) {
+        this.scheduler = scheduler;
     }
 
     @Override
-    public int compareTwoItems(Task o1, Task o2) {
-        Integer executedTime1 = map.get(o1);
-        Integer executedTime2 = map.get(o1);
+    public boolean onExecuteOneTimeUnit(Task task) {
+        synchronized (mapLock) {
+            Integer executionTime = map.get(task);
 
-        if(executedTime1 == null && executedTime2 == null) {
-            return Integer.compare(o1.getEnterTime(), o2.getEnterTime());
-        } else if(executedTime1 == null) {
+            if(executionTime == null)
+                executionTime = 0;
 
-        } else if(executedTime2 == null) {
+            if(executionTime == timeSlice) {
+                map.put(task, 0);
+                int currentTime = TimeUnitObservable.getInstance().getCurrentTime();
 
-        } else {
-            return Integer.compare(executedTime1, executedTime2);
+                task.setEnterTime(currentTime);
+                scheduler.pushToReadyQueue(task);
+                return true;
+            } else {
+                map.put(task, executionTime + 1);
+            }
+
+            return false;
         }
-
-        return 0;
-    }
-
-    private void reset(Task task) {
-        map.put(task, 0);
     }
 
 }

@@ -1,6 +1,7 @@
 package um.os.scheduler;
 
 import um.os.scheduler.algo.FirstComeFirstServeAlgorithm;
+import um.os.scheduler.algo.RoundRobinAlgorithm;
 import um.os.scheduler.algo.ShortestJobFirstAlgorithm;
 import um.os.scheduler.core.Cpu;
 import um.os.scheduler.core.Scheduler;
@@ -24,8 +25,11 @@ public class Main {
 
         scanner.close();
 
-        Scheduler scheduler = new Scheduler(new ShortestJobFirstAlgorithm());
+        RoundRobinAlgorithm algorithm = new RoundRobinAlgorithm(3);
+        Scheduler scheduler = new Scheduler(algorithm);
+        algorithm.setScheduler(scheduler);
         Cpu cpu = new Cpu(4, scheduler, resourceManager);
+
 
         cpu.run();
 
@@ -36,7 +40,7 @@ public class Main {
             TimeUnitObservable.getInstance().notifyOneTimeUnitPassed();
         }
 
-        while(!cpu.areAllTasksFinished()) {
+        while(TimeUnitObservable.getInstance().getCurrentTime() < 50 && !cpu.areAllTasksFinished()) {
             System.out.println(cpu.getSystemStatus());
             TimeUnitObservable.getInstance().notifyOneTimeUnitPassed();
         }
