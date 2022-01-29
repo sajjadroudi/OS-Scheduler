@@ -51,6 +51,12 @@ public class Cpu {
                 }
 
                 private Task getNextReadyTask() {
+                    Task poorTask = scheduler.getQualifiedTasksToPreventStarvation();
+
+                    if(poorTask != null) {
+                        return poorTask;
+                    }
+
                     Task nextTask = scheduler.nextReadyTask();
 
                     while(nextTask != null && !resourceManager.areAllNeededResourcesAvailable(nextTask)) {

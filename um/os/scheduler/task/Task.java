@@ -10,6 +10,7 @@ public class Task {
     private TaskState state;
     private int duration;
     private int enterTime;
+    private int waitingTime;
 
     public Task(String name, TaskType type, int duration) {
         this.name = name;
@@ -60,6 +61,18 @@ public class Task {
 
     public boolean isFinished() {
         return duration == 0;
+    }
+
+    public void incrementWaiting() {
+        waitingTime++;
+    }
+
+    public void resetWaitingTime() {
+        waitingTime = 0;
+    }
+
+    public int getWaitingTime() {
+        return waitingTime;
     }
 
     @Override

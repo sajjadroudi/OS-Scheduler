@@ -2,11 +2,10 @@ package um.os.scheduler.core;
 
 import um.os.scheduler.algo.PreemptiveSchedulingAlgorithm;
 import um.os.scheduler.algo.SchedulingAlgorithm;
-import um.os.scheduler.resource.ResourceManager;
 import um.os.scheduler.task.Task;
+import um.os.scheduler.timeunit.TimeUnitObservable;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class Scheduler {
 
@@ -22,6 +21,14 @@ public class Scheduler {
         schedulingAlgorithm = algorithm;
         ready = new PriorityQueue<>(algorithm);
         waiting = new LinkedList<>();
+
+        TimeUnitObservable.getInstance().addObserver(() -> {
+            synchronized (waitingQueueLock) {
+                for(Task task : waiting) {
+                    task.incrementWaiting();
+                }
+            }
+        });
     }
 
     public boolean onExecuteOneTimeUnit(Task task) {
@@ -39,11 +46,32 @@ public class Scheduler {
         }
     }
 
+    public Task getQualifiedTasksToPreventStarvation() {
+        synchronized (waitingQueueLock) {
+            return waiting.stream()
+                    .filter(it -> it.getWaitingTime() >= 2 * it.getDuration())
+                    .max(new Comparator<Task>() {
+                        @Override
+                        public int compare(Task o1, Task o2) {
+                            return Integer.compare(
+                                    o1.getWaitingTime() - 2 * o1.getDuration(),
+                                    o2.getWaitingTime() - 2 * o2.getDuration()
+                            );
+                        }
+                    })
+                    .orElse(null);
+        }
+    }
+
     public void pushToReadyQueue(Task... tasks) {
         synchronized (waitingQueueLock) {
             for(Task task : tasks) {
                 waiting.remove(task);
             }
+        }
+
+        for(Task task : tasks) {
+            task.resetWaitingTime();
         }
 
         synchronized (readyQueueLock) {
