@@ -46,19 +46,14 @@ public class Scheduler {
         }
     }
 
-    public Task[] getQualifiedTasksToPreventStarvation() {
+    public Task[] getPoorTasksToPreventStarvation() {
         synchronized (waitingQueueLock) {
             return waiting.stream()
                     .filter(it -> it.getWaitingTime() >= 2 * it.getDuration())
-                    .sorted(new Comparator<Task>() {
-                        @Override
-                        public int compare(Task o1, Task o2) {
-                            return Integer.compare(
-                                    o2.getWaitingTime() - 2 * o2.getDuration(),
-                                    o1.getWaitingTime() - 2 * o1.getDuration()
-                            );
-                        }
-                    })
+                    .sorted((o1, o2) -> Integer.compare(
+                            o2.getWaitingTime() - 2 * o2.getDuration(),
+                            o1.getWaitingTime() - 2 * o1.getDuration()
+                    ))
                     .toArray(Task[]::new);
         }
     }
@@ -99,6 +94,7 @@ public class Scheduler {
     public String[] getReadyTaskNames() {
         synchronized (readyQueueLock) {
             return ready.stream()
+                    .sorted(schedulingAlgorithm)
                     .map(Task::getName)
                     .toArray(String[]::new);
         }

@@ -6,7 +6,6 @@ import um.os.scheduler.task.TaskCallback;
 import um.os.scheduler.timeunit.TimeUnitObservable;
 
 import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
 
 public class Cpu {
 
@@ -51,7 +50,7 @@ public class Cpu {
                 }
 
                 private Task getNextReadyTask() {
-                    Task[] poorTasks = scheduler.getQualifiedTasksToPreventStarvation();
+                    Task[] poorTasks = scheduler.getPoorTasksToPreventStarvation();
 
                     for(Task task : poorTasks) {
                         if(resourceManager.areAllNeededResourcesAvailable(task)) {
