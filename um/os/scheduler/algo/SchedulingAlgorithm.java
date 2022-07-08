@@ -12,7 +12,7 @@ public interface SchedulingAlgorithm extends Comparator<Task> {
         if(result == 0) {
             result = Integer.compare(o1.getPriority(), o2.getPriority());
         }
-        return  result;
+        return result;
     }
 
     int compareTwoItems(Task first, Task second);

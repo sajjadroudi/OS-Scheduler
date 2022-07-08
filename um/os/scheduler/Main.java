@@ -14,15 +14,6 @@ import um.os.scheduler.timeunit.TimeUnitObservable;
 
 import java.util.Scanner;
 
-    /*
-3   4   5
-4
-t1  X   5
-t2  Z   8
-t3  Y   4
-t4  Z   2
-     */
-
 public class Main {
 
     public static void main(String[] args) {
@@ -34,9 +25,9 @@ public class Main {
 
         scanner.close();
 
-//        RoundRobinAlgorithm algorithm = new RoundRobinAlgorithm(3);
+        RoundRobinAlgorithm algorithm = new RoundRobinAlgorithm(3);
         Scheduler scheduler = new Scheduler(new FirstComeFirstServeAlgorithm());
-//        algorithm.setScheduler(scheduler);
+        algorithm.setScheduler(scheduler);
         Cpu cpu = new Cpu(4, scheduler, resourceManager);
 
         for(Task task : tasks) {
