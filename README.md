@@ -1,6 +1,6 @@
 # Simple Shell
 
-Simple task scheduler written in Java. Created as a University project for Operating Systems course.
+Simple task scheduler written in Java. Created as a University project for Operating Systems course. You can study [project_definition.pdf](https://github.com/sajjadroudi/turing-machine/blob/master/project_definition.pdf) for more details.
 
 ## Features
 
